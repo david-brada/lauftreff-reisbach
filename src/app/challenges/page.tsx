@@ -1,10 +1,23 @@
+export const dynamic = "force-dynamic";
+
 import { Target, Users, Calendar, Trophy } from "lucide-react";
-import { mockChallenges } from "@/lib/mock-data";
+import { getClubActivities, getClubMembers, type ClubActivity } from "@/lib/strava";
 
 export const metadata = {
   title: "Challenges – Lauftreff Reisbach",
   description: "Gemeinsame Lauf-Challenges und Ziele des Lauftreff Reisbach",
 };
+
+interface Challenge {
+  id: number;
+  title: string;
+  description: string;
+  target: number;
+  current: number;
+  unit: string;
+  icon: string;
+  endDate: string;
+}
 
 function getProgressColor(progress: number) {
   if (progress >= 80) return "from-primary to-emerald-400";
@@ -15,21 +28,79 @@ function getProgressColor(progress: number) {
 
 function getDaysLeft(endDate: string): number {
   const end = new Date(endDate);
-  const now = new Date("2026-03-04");
+  const now = new Date();
   return Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
 }
 
-function getStatusBadge(startDate: string, endDate: string) {
-  const now = new Date("2026-03-04");
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  
-  if (now < start) return { label: "Bald", color: "bg-blue-100 text-blue-700" };
-  if (now > end) return { label: "Beendet", color: "bg-stone-100 text-stone-500" };
-  return { label: "Aktiv", color: "bg-primary/10 text-primary" };
+function buildChallenges(activities: ClubActivity[], memberCount: number): Challenge[] {
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  const monthNames = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+  const monthName = monthNames[currentMonth];
+
+  const totalKm = parseFloat((activities.reduce((s, a) => s + a.distance, 0) / 1000).toFixed(1));
+  const totalElevation = Math.round(activities.reduce((s, a) => s + a.total_elevation_gain, 0));
+  const totalRuns = activities.length;
+
+  const kmTarget = Math.max(50, Math.ceil(memberCount * 50 / 10) * 10);
+  const elevTarget = Math.max(500, Math.ceil(memberCount * 500 / 100) * 100);
+  const runsTarget = Math.max(10, memberCount * 5);
+
+  const endOfMonth = new Date(currentYear, currentMonth + 1, 0).toISOString().split("T")[0];
+
+  return [
+    {
+      id: 1,
+      title: `${monthName}-Challenge: ${kmTarget} km`,
+      description: `Gemeinsam schaffen wir ${kmTarget} km im ${monthName}! Jeder Kilometer zählt.`,
+      target: kmTarget,
+      current: totalKm,
+      unit: "km",
+      icon: "🎯",
+      endDate: endOfMonth,
+    },
+    {
+      id: 2,
+      title: `Höhenmeter-Challenge: ${elevTarget} m`,
+      description: `Sammelt gemeinsam ${elevTarget} Höhenmeter in diesem Monat!`,
+      target: elevTarget,
+      current: totalElevation,
+      unit: "m",
+      icon: "⛰️",
+      endDate: endOfMonth,
+    },
+    {
+      id: 3,
+      title: `${runsTarget} Läufe im ${monthName}`,
+      description: `Ziel: ${runsTarget} Läufe als Gruppe in diesem Monat schaffen.`,
+      target: runsTarget,
+      current: totalRuns,
+      unit: "Läufe",
+      icon: "🏃",
+      endDate: endOfMonth,
+    },
+  ];
 }
 
-export default function ChallengesPage() {
+export default async function ChallengesPage() {
+  let activities: ClubActivity[] = [];
+  let memberCount = 0;
+  try {
+    const [acts, members] = await Promise.all([
+      getClubActivities(1, 200),
+      getClubMembers(),
+    ]);
+    activities = acts;
+    memberCount = members.length;
+  } catch (e) {
+    console.error("Strava fetch failed", e);
+  }
+
+  const effectiveMembers = memberCount || 1;
+  const challenges = buildChallenges(activities, effectiveMembers);
+  const mainChallenge = challenges[0];
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
@@ -39,47 +110,46 @@ export default function ChallengesPage() {
           Challenges
         </h1>
         <p className="text-text-muted mt-1">
-          Gemeinsame Ziele motivieren! Hier sind unsere aktuellen Challenges.
+          Gemeinsame Ziele basierend auf echten Strava-Daten!
         </p>
       </div>
 
       {/* Featured Challenge */}
       <div className="bg-gradient-to-br from-primary to-emerald-700 text-white rounded-2xl p-6 md:p-8 mb-8 relative overflow-hidden">
         <div className="absolute top-0 right-0 text-[120px] opacity-10 leading-none">
-          {mockChallenges[0].icon}
+          {mainChallenge.icon}
         </div>
         <div className="relative">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-3xl">{mockChallenges[0].icon}</span>
+            <span className="text-3xl">{mainChallenge.icon}</span>
             <span className="bg-white/20 px-3 py-0.5 rounded-full text-sm font-medium backdrop-blur-sm">
               Aktive Challenge
             </span>
           </div>
-          <h2 className="text-2xl md:text-3xl font-bold mb-2">{mockChallenges[0].title}</h2>
-          <p className="text-emerald-100 mb-6">{mockChallenges[0].description}</p>
+          <h2 className="text-2xl md:text-3xl font-bold mb-2">{mainChallenge.title}</h2>
+          <p className="text-emerald-100 mb-6">{mainChallenge.description}</p>
           
-          {/* Progress */}
           <div className="mb-4">
             <div className="flex justify-between text-sm mb-2">
               <span className="font-bold text-lg">
-                {mockChallenges[0].current} / {mockChallenges[0].target} {mockChallenges[0].unit}
+                {mainChallenge.current} / {mainChallenge.target} {mainChallenge.unit}
               </span>
-              <span>{Math.round((mockChallenges[0].current / mockChallenges[0].target) * 100)}%</span>
+              <span>{Math.min(100, Math.round((mainChallenge.current / mainChallenge.target) * 100))}%</span>
             </div>
             <div className="h-4 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
               <div
                 className="h-full bg-white rounded-full transition-all duration-1000"
-                style={{ width: `${(mockChallenges[0].current / mockChallenges[0].target) * 100}%` }}
+                style={{ width: `${Math.min((mainChallenge.current / mainChallenge.target) * 100, 100)}%` }}
               />
             </div>
           </div>
           
           <div className="flex items-center gap-6 text-sm text-emerald-100">
             <span className="flex items-center gap-1">
-              <Users className="w-4 h-4" /> {mockChallenges[0].participants} Teilnehmer
+              <Users className="w-4 h-4" /> {effectiveMembers} Teilnehmer
             </span>
             <span className="flex items-center gap-1">
-              <Calendar className="w-4 h-4" /> Noch {getDaysLeft(mockChallenges[0].endDate)} Tage
+              <Calendar className="w-4 h-4" /> Noch {getDaysLeft(mainChallenge.endDate)} Tage
             </span>
           </div>
         </div>
@@ -88,9 +158,8 @@ export default function ChallengesPage() {
       {/* All Challenges */}
       <h2 className="text-xl font-bold mb-4">Alle Challenges</h2>
       <div className="grid md:grid-cols-2 gap-4">
-        {mockChallenges.map((challenge) => {
+        {challenges.map((challenge) => {
           const progress = (challenge.current / challenge.target) * 100;
-          const status = getStatusBadge(challenge.startDate, challenge.endDate);
           const daysLeft = getDaysLeft(challenge.endDate);
 
           return (
@@ -98,12 +167,11 @@ export default function ChallengesPage() {
               key={challenge.id}
               className="bg-bg-card rounded-2xl border border-border p-5 hover:shadow-lg transition-shadow"
             >
-              {/* Header */}
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <span className="text-3xl">{challenge.icon}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${status.color}`}>
-                    {status.label}
+                  <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-primary/10 text-primary">
+                    Aktiv
                   </span>
                 </div>
                 {progress >= 100 && (
@@ -111,17 +179,15 @@ export default function ChallengesPage() {
                 )}
               </div>
 
-              {/* Content */}
               <h3 className="font-bold text-lg mb-1">{challenge.title}</h3>
               <p className="text-sm text-text-muted mb-4">{challenge.description}</p>
 
-              {/* Progress Bar */}
               <div className="mb-3">
                 <div className="flex justify-between text-sm mb-1">
                   <span className="font-medium">
                     {challenge.current} / {challenge.target} {challenge.unit}
                   </span>
-                  <span className="text-text-muted">{Math.round(progress)}%</span>
+                  <span className="text-text-muted">{Math.min(100, Math.round(progress))}%</span>
                 </div>
                 <div className="h-2.5 bg-stone-100 rounded-full overflow-hidden">
                   <div
@@ -131,10 +197,9 @@ export default function ChallengesPage() {
                 </div>
               </div>
 
-              {/* Meta */}
               <div className="flex items-center justify-between text-xs text-text-muted">
                 <span className="flex items-center gap-1">
-                  <Users className="w-3 h-3" /> {challenge.participants} Teilnehmer
+                  <Users className="w-3 h-3" /> {effectiveMembers} Teilnehmer
                 </span>
                 <span className="flex items-center gap-1">
                   <Calendar className="w-3 h-3" /> {daysLeft > 0 ? `Noch ${daysLeft} Tage` : "Beendet"}
@@ -147,13 +212,22 @@ export default function ChallengesPage() {
 
       {/* CTA */}
       <div className="mt-12 text-center bg-stone-50 rounded-2xl p-8 border border-border">
-        <h3 className="text-xl font-bold mb-2">Du hast eine Challenge-Idee? 💡</h3>
+        <h3 className="text-xl font-bold mb-2">Mach mit beim Lauftreff! 🏃</h3>
         <p className="text-text-muted mb-4">
-          Schlag eine neue Challenge vor! Je kreativer, desto besser.
+          Tritt unserem Strava-Club bei und deine Läufe zählen automatisch für alle Challenges.
         </p>
-        <p className="text-sm text-text-muted">
-          Schreib einfach in die WhatsApp-Gruppe oder sprich uns beim nächsten Lauftreff an.
-        </p>
+        <a
+          href="https://www.strava.com/clubs/1997757"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block px-6 py-3 bg-primary text-white font-bold rounded-xl hover:bg-emerald-700 transition-colors"
+        >
+          Strava-Club beitreten
+        </a>
+      </div>
+
+      <div className="text-center mt-6 text-sm text-text-muted">
+        Daten powered by Strava 🔗
       </div>
     </div>
   );

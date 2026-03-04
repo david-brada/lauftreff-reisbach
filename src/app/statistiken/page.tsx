@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { BarChart3, TrendingUp, Users, MapPin, Clock, Activity } from "lucide-react";
 import { getClubActivities, getClubMembers, formatDuration, formatPace, type ClubActivity } from "@/lib/strava";
 

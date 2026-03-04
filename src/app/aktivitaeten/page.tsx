@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { Activity, Mountain, Clock, Filter } from "lucide-react";
 import { getClubActivities, formatDistance, formatDuration, formatPace, type ClubActivity } from "@/lib/strava";
 

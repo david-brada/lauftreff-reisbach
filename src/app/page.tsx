@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import {
   Activity,
@@ -9,7 +11,6 @@ import {
   TrendingUp,
   ChevronRight,
 } from "lucide-react";
-import { mockChallenges } from "@/lib/mock-data";
 import { getClubActivities, getClubMembers, formatDistance, formatDuration, formatPace, type ClubActivity, type ClubMember } from "@/lib/strava";
 
 function activityToDisplay(a: ClubActivity) {
@@ -59,7 +60,22 @@ export default async function Home() {
     .sort((a, b) => b.totalKm - a.totalKm)
     .slice(0, 3);
 
-  const activeChallenge = mockChallenges[0];
+  // Build challenge from real data
+  const now = new Date();
+  const monthNames = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+  const monthName = monthNames[now.getMonth()];
+  const kmTarget = Math.max(50, Math.ceil((memberCount || 1) * 50 / 10) * 10);
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const daysLeft = Math.max(0, Math.ceil((endOfMonth.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+  const activeChallenge = {
+    icon: "🎯",
+    title: `${monthName}: ${kmTarget} km`,
+    description: `Gemeinsam ${kmTarget} km schaffen!`,
+    current: totalKm,
+    target: kmTarget,
+    unit: "km",
+    daysLeft,
+  };
 
   return (
     <div>
@@ -231,7 +247,7 @@ export default async function Home() {
                 </div>
                 <div className="flex justify-between text-xs text-text-muted mt-1">
                   <span>{activeChallenge.current} {activeChallenge.unit}</span>
-                  <span>{activeChallenge.target} {activeChallenge.unit}</span>
+                  <span>Ziel: {activeChallenge.target} {activeChallenge.unit} · noch {activeChallenge.daysLeft} Tage</span>
                 </div>
               </div>
             </div>

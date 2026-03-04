@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { Trophy, TrendingUp, Activity, Mountain } from "lucide-react";
 import { getClubActivities, getClubMembers, formatDistance, formatDuration, formatPace, type ClubActivity } from "@/lib/strava";
 

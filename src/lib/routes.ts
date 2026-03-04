@@ -1,7 +1,10 @@
 /**
  * Lokale Strecken-Daten für den Lauftreff Reisbach.
- * Diese Routen werden manuell gepflegt und sind keine Mock-Daten.
- * Koordinaten basieren auf echten Wegen rund um Reisbach (Niederbayern).
+ * Reisbach, 66793 Saarwellingen, Landkreis Saarlouis, Saarland.
+ * Zentrum: ca. 49.3601°N, 6.8721°E
+ * 
+ * Diese Routen werden manuell gepflegt.
+ * Für Änderungen: /admin → Strecken verwalten
  */
 
 export interface Route {
@@ -17,58 +20,43 @@ export interface Route {
 export const routes: Route[] = [
   {
     id: 1,
-    name: "Vilstal-Runde",
-    distance: 8.5,
-    elevation: 45,
+    name: "Dorfrunde Reisbach",
+    distance: 5.0,
+    elevation: 40,
     difficulty: "Leicht",
-    description: "Gemütliche Runde entlang der Vils. Flach und ideal für Einsteiger oder lockere Regenerationsläufe.",
+    description: "Gemütliche Runde durch und um Reisbach. Flach und ideal für Einsteiger oder lockere Regenerationsläufe.",
     coordinates: [
-      [48.5680, 12.6280], [48.5695, 12.6320], [48.5710, 12.6360],
-      [48.5740, 12.6390], [48.5760, 12.6370], [48.5770, 12.6330],
-      [48.5755, 12.6280], [48.5730, 12.6240], [48.5710, 12.6220],
-      [48.5690, 12.6240], [48.5680, 12.6280],
+      [49.3601, 6.8721], [49.3615, 6.8760], [49.3635, 6.8790],
+      [49.3650, 6.8770], [49.3660, 6.8730], [49.3650, 6.8690],
+      [49.3630, 6.8660], [49.3610, 6.8680], [49.3601, 6.8721],
     ],
   },
   {
     id: 2,
-    name: "Hügelrunde Obere Holz",
-    distance: 12.3,
-    elevation: 120,
+    name: "Reisbach – Saarwellingen Runde",
+    distance: 8.5,
+    elevation: 75,
     difficulty: "Mittel",
-    description: "Hügelige Strecke durch Felder und Wald nördlich von Reisbach. Schöne Aussichtspunkte über das Vilstal.",
+    description: "Rundkurs von Reisbach nach Saarwellingen und zurück. Schöne Strecke durch Felder und entlang des Ellbachs.",
     coordinates: [
-      [48.5680, 12.6280], [48.5710, 12.6200], [48.5740, 12.6150],
-      [48.5780, 12.6120], [48.5820, 12.6160], [48.5840, 12.6230],
-      [48.5820, 12.6310], [48.5790, 12.6360], [48.5750, 12.6370],
-      [48.5720, 12.6340], [48.5700, 12.6300], [48.5680, 12.6280],
+      [49.3601, 6.8721], [49.3580, 6.8650], [49.3560, 6.8550],
+      [49.3540, 6.8400], [49.3530, 6.8200], [49.3527, 6.8063],
+      [49.3550, 6.8100], [49.3575, 6.8250], [49.3590, 6.8450],
+      [49.3595, 6.8600], [49.3601, 6.8721],
     ],
   },
   {
     id: 3,
-    name: "Waldtrail Richtung Griesbach",
-    distance: 6.2,
-    elevation: 85,
+    name: "Waldlauf Richtung Schwarzenholz",
+    distance: 10.2,
+    elevation: 110,
     difficulty: "Mittel",
-    description: "Abwechslungsreicher Trail durch den Wald südlich von Reisbach. Wurzelige Passagen und ein paar knackige Anstiege.",
+    description: "Abwechslungsreiche Strecke durch den Wald Richtung Schwarzenholz. Hügelig mit schönen Waldwegen.",
     coordinates: [
-      [48.5680, 12.6280], [48.5660, 12.6240], [48.5640, 12.6190],
-      [48.5610, 12.6160], [48.5590, 12.6190], [48.5600, 12.6240],
-      [48.5620, 12.6280], [48.5640, 12.6310], [48.5660, 12.6300],
-      [48.5680, 12.6280],
-    ],
-  },
-  {
-    id: 4,
-    name: "Langstrecke Reisbach – Frontenhausen",
-    distance: 18.5,
-    elevation: 140,
-    difficulty: "Schwer",
-    description: "Lange Strecke Richtung Frontenhausen und zurück. Gut geeignet für Marathon-Vorbereitung oder lange Sonntagsläufe.",
-    coordinates: [
-      [48.5680, 12.6280], [48.5640, 12.6180], [48.5580, 12.6050],
-      [48.5520, 12.5920], [48.5460, 12.5800], [48.5400, 12.5680],
-      [48.5460, 12.5800], [48.5520, 12.5920], [48.5580, 12.6050],
-      [48.5640, 12.6180], [48.5680, 12.6280],
+      [49.3601, 6.8721], [49.3620, 6.8800], [49.3650, 6.8870],
+      [49.3680, 6.8920], [49.3710, 6.8950], [49.3740, 6.8900],
+      [49.3720, 6.8830], [49.3690, 6.8780], [49.3660, 6.8750],
+      [49.3630, 6.8730], [49.3601, 6.8721],
     ],
   },
 ];

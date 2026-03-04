@@ -1,12 +1,12 @@
 "use client";
 
-import dynamic from "next/dynamic";
+import dynamicImport from "next/dynamic";
 import { Map as MapIcon, Mountain, Ruler, ArrowUpDown } from "lucide-react";
-import { routes } from "@/lib/routes";
-import { useState } from "react";
+import { routes as staticRoutes, type Route } from "@/lib/routes";
+import { useState, useEffect } from "react";
 
 // Leaflet muss client-side geladne werden
-const RouteMap = dynamic(() => import("@/components/RouteMap"), {
+const RouteMap = dynamicImport(() => import("@/components/RouteMap"), {
   ssr: false,
   loading: () => (
     <div className="h-[400px] bg-stone-100 rounded-2xl flex items-center justify-center text-text-muted">
@@ -29,7 +29,22 @@ function DifficultyBadge({ difficulty }: { difficulty: string }) {
 }
 
 export default function StreckenPage() {
-  const [selectedRoute, setSelectedRoute] = useState(routes[0]);
+  const [routes, setRoutes] = useState<Route[]>(staticRoutes);
+  const [selectedRoute, setSelectedRoute] = useState<Route>(staticRoutes[0]);
+
+  useEffect(() => {
+    fetch("/api/admin/data?key=routes")
+      .then(async (res) => {
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setRoutes(data);
+            setSelectedRoute(data[0]);
+          }
+        }
+      })
+      .catch(() => { /* keep static routes */ });
+  }, []);
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

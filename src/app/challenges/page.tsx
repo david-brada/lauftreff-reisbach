@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { Target, Users, Calendar, Trophy } from "lucide-react";
 import { getClubActivities, getClubMembers, type ClubActivity } from "@/lib/strava";
+import { supabase } from "@/lib/supabase";
 
 export const metadata = {
   title: "Challenges – Lauftreff Reisbach",
@@ -17,6 +18,18 @@ interface Challenge {
   unit: string;
   icon: string;
   endDate: string;
+}
+
+interface AdminChallenge {
+  id: number;
+  title: string;
+  description: string;
+  target: number;
+  unit: string;
+  icon: string;
+  endDate: string;
+  type: "km" | "elevation" | "runs" | "custom";
+  customCurrent?: number;
 }
 
 function getProgressColor(progress: number) {
@@ -83,6 +96,53 @@ function buildChallenges(activities: ClubActivity[], memberCount: number): Chall
   ];
 }
 
+function mergeAdminChallenges(
+  adminChallenges: AdminChallenge[],
+  activities: ClubActivity[]
+): Challenge[] {
+  const now = new Date();
+  const totalKm = parseFloat((activities.reduce((s, a) => s + a.distance, 0) / 1000).toFixed(1));
+  const totalElevation = Math.round(activities.reduce((s, a) => s + a.total_elevation_gain, 0));
+  const totalRuns = activities.length;
+
+  return adminChallenges
+    .filter((c) => new Date(c.endDate) >= now) // only active
+    .map((c) => {
+      let current = 0;
+      if (c.type === "km") current = totalKm;
+      else if (c.type === "elevation") current = totalElevation;
+      else if (c.type === "runs") current = totalRuns;
+      else current = c.customCurrent || 0;
+
+      return {
+        id: c.id,
+        title: c.title,
+        description: c.description,
+        target: c.target,
+        current,
+        unit: c.unit,
+        icon: c.icon,
+        endDate: c.endDate,
+      };
+    });
+}
+
+async function getAdminChallenges(): Promise<AdminChallenge[]> {
+  try {
+    const { data, error } = await supabase
+      .from("lauftreff_config")
+      .select("value")
+      .eq("key", "challenges")
+      .single();
+    if (error) throw error;
+    const value = data?.value;
+    if (Array.isArray(value) && value.length > 0) return value;
+  } catch {
+    // Supabase not configured or table missing
+  }
+  return [];
+}
+
 export default async function ChallengesPage() {
   let activities: ClubActivity[] = [];
   let memberCount = 0;
@@ -98,7 +158,14 @@ export default async function ChallengesPage() {
   }
 
   const effectiveMembers = memberCount || 1;
-  const challenges = buildChallenges(activities, effectiveMembers);
+
+  // Get admin-created challenges from Supabase
+  const adminChallenges = await getAdminChallenges();
+
+  // Use admin challenges if any exist, otherwise auto-generate from Strava
+  const challenges = adminChallenges.length > 0
+    ? mergeAdminChallenges(adminChallenges, activities)
+    : buildChallenges(activities, effectiveMembers);
   const mainChallenge = challenges[0];
 
   return (

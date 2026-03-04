@@ -1,12 +1,44 @@
-import { Trophy, Flame, TrendingUp, Medal } from "lucide-react";
-import { mockRunners } from "@/lib/mock-data";
+import { Trophy, TrendingUp, Activity, Mountain } from "lucide-react";
+import { getClubActivities, getClubMembers, formatDistance, formatDuration, formatPace, type ClubActivity } from "@/lib/strava";
 
 export const metadata = {
   title: "Leaderboard – Lauftreff Reisbach",
   description: "Rangliste der aktivsten Läufer im Lauftreff Reisbach",
 };
 
-const sortedRunners = [...mockRunners].sort((a, b) => b.totalKm - a.totalKm);
+interface RunnerStats {
+  name: string;
+  totalKm: number;
+  totalRuns: number;
+  totalElevation: number;
+  totalTime: number;
+  avgPace: string;
+}
+
+function buildLeaderboard(activities: ClubActivity[]): RunnerStats[] {
+  const map = new Map<string, { km: number; runs: number; elevation: number; time: number }>();
+
+  for (const a of activities) {
+    const name = `${a.athlete.firstname} ${a.athlete.lastname}`;
+    const existing = map.get(name) || { km: 0, runs: 0, elevation: 0, time: 0 };
+    existing.km += a.distance / 1000;
+    existing.runs += 1;
+    existing.elevation += a.total_elevation_gain;
+    existing.time += a.moving_time;
+    map.set(name, existing);
+  }
+
+  return Array.from(map.entries())
+    .map(([name, data]) => ({
+      name,
+      totalKm: parseFloat(data.km.toFixed(1)),
+      totalRuns: data.runs,
+      totalElevation: Math.round(data.elevation),
+      totalTime: data.time,
+      avgPace: data.km > 0 ? formatPace((data.km * 1000) / data.time) : "-",
+    }))
+    .sort((a, b) => b.totalKm - a.totalKm);
+}
 
 function getMedalColor(position: number) {
   switch (position) {
@@ -17,7 +49,36 @@ function getMedalColor(position: number) {
   }
 }
 
-export default function LeaderboardPage() {
+export default async function LeaderboardPage() {
+  let activities: ClubActivity[] = [];
+  try {
+    activities = await getClubActivities(1, 200);
+  } catch (e) {
+    console.error("Strava fetch failed", e);
+  }
+
+  const runners = buildLeaderboard(activities);
+  const totalGroupKm = runners.reduce((s, r) => s + r.totalKm, 0).toFixed(0);
+  const totalGroupRuns = runners.reduce((s, r) => s + r.totalRuns, 0);
+
+  if (runners.length === 0) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold flex items-center gap-3">
+            <Trophy className="w-8 h-8 text-accent" />
+            Leaderboard
+          </h1>
+        </div>
+        <div className="bg-bg-card rounded-2xl border border-border p-12 text-center">
+          <span className="text-5xl mb-4 block">🏃</span>
+          <h2 className="text-xl font-bold mb-2">Noch keine Aktivitäten</h2>
+          <p className="text-text-muted">Sobald Mitglieder dem Club beitreten und laufen, erscheint hier das Leaderboard.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
@@ -27,67 +88,55 @@ export default function LeaderboardPage() {
           Leaderboard
         </h1>
         <p className="text-text-muted mt-1">
-          Wer hat diesen Monat die meisten Kilometer gesammelt?
+          Wer hat die meisten Kilometer gesammelt?
         </p>
       </div>
 
-      {/* Podium (Top 3) */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        {/* 2nd place */}
-        <div className="flex flex-col items-center pt-8">
-          <span className="text-4xl mb-2">{sortedRunners[1]?.avatar}</span>
-          <div className="bg-stone-200 rounded-t-2xl w-full py-6 text-center relative">
-            <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-3xl">🥈</span>
-            <div className="font-bold mt-2">{sortedRunners[1]?.name}</div>
-            <div className="text-lg font-bold text-primary">{sortedRunners[1]?.totalKm} km</div>
-            <div className="text-xs text-text-muted">{sortedRunners[1]?.totalRuns} Läufe</div>
-          </div>
-        </div>
-
-        {/* 1st place */}
-        <div className="flex flex-col items-center">
-          <span className="text-5xl mb-2">{sortedRunners[0]?.avatar}</span>
-          <div className="bg-yellow-100 rounded-t-2xl w-full py-8 text-center relative border-2 border-yellow-300">
-            <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-4xl">🥇</span>
-            <div className="font-bold text-lg mt-2">{sortedRunners[0]?.name}</div>
-            <div className="text-2xl font-bold text-primary">{sortedRunners[0]?.totalKm} km</div>
-            <div className="text-sm text-text-muted">{sortedRunners[0]?.totalRuns} Läufe</div>
-            <div className="text-xs text-accent font-medium mt-1">
-              <Flame className="w-3 h-3 inline" /> {sortedRunners[0]?.streak} Tage Streak
+      {/* Leader Card (wenn nur 1 Läufer oder Top-Läufer) */}
+      {runners.length >= 1 && (
+        <div className="bg-gradient-to-br from-yellow-50 to-amber-50 rounded-2xl border-2 border-yellow-300 p-6 mb-8">
+          <div className="flex items-center gap-4">
+            <div className="text-5xl">🥇</div>
+            <div className="flex-1">
+              <div className="text-sm text-yellow-700 font-medium mb-1">
+                {runners.length === 1 ? "Aktuell einziger Läufer" : "Platz 1"}
+              </div>
+              <div className="text-2xl font-bold">{runners[0].name}</div>
+              <div className="flex flex-wrap gap-4 mt-2 text-sm">
+                <span className="flex items-center gap-1 font-bold text-primary">
+                  <TrendingUp className="w-4 h-4" /> {runners[0].totalKm} km
+                </span>
+                <span className="flex items-center gap-1 text-text-muted">
+                  <Activity className="w-4 h-4" /> {runners[0].totalRuns} Läufe
+                </span>
+                <span className="flex items-center gap-1 text-text-muted">
+                  <Mountain className="w-4 h-4" /> ↑ {runners[0].totalElevation} m
+                </span>
+                <span className="text-text-muted">
+                  Ø {runners[0].avgPace}
+                </span>
+              </div>
             </div>
           </div>
         </div>
+      )}
 
-        {/* 3rd place */}
-        <div className="flex flex-col items-center pt-12">
-          <span className="text-4xl mb-2">{sortedRunners[2]?.avatar}</span>
-          <div className="bg-orange-100 rounded-t-2xl w-full py-4 text-center relative">
-            <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-3xl">🥉</span>
-            <div className="font-bold mt-2">{sortedRunners[2]?.name}</div>
-            <div className="text-lg font-bold text-primary">{sortedRunners[2]?.totalKm} km</div>
-            <div className="text-xs text-text-muted">{sortedRunners[2]?.totalRuns} Läufe</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Full Ranking */}
+      {/* Ranking Table */}
       <div className="bg-bg-card rounded-2xl border border-border overflow-hidden">
         <div className="grid grid-cols-12 gap-2 p-3 bg-stone-50 text-xs font-medium text-text-muted border-b border-border">
           <div className="col-span-1 text-center">#</div>
           <div className="col-span-4">Läufer</div>
           <div className="col-span-2 text-right">Kilometer</div>
           <div className="col-span-2 text-right">Läufe</div>
-          <div className="col-span-1 text-right">Pace</div>
-          <div className="col-span-2 text-right flex items-center justify-end gap-1">
-            <Flame className="w-3 h-3" /> Streak
-          </div>
+          <div className="col-span-1 text-right">Höhe</div>
+          <div className="col-span-2 text-right">Ø Pace</div>
         </div>
 
-        {sortedRunners.map((runner, index) => {
+        {runners.map((runner, index) => {
           const medal = getMedalColor(index);
           return (
             <div
-              key={runner.id}
+              key={runner.name}
               className={`grid grid-cols-12 gap-2 p-3 items-center border-b border-border last:border-b-0 ${medal.bg} hover:bg-stone-50/50 transition-colors`}
             >
               <div className="col-span-1 text-center">
@@ -100,39 +149,48 @@ export default function LeaderboardPage() {
                 )}
               </div>
               <div className="col-span-4 flex items-center gap-2">
-                <span className="text-xl">{runner.avatar}</span>
+                <span className="text-xl">🏃</span>
                 <span className="font-medium">{runner.name}</span>
               </div>
               <div className="col-span-2 text-right font-bold">{runner.totalKm} km</div>
               <div className="col-span-2 text-right text-text-muted">{runner.totalRuns}</div>
-              <div className="col-span-1 text-right text-sm text-text-muted">{runner.avgPace}</div>
-              <div className="col-span-2 text-right">
-                <span className="inline-flex items-center gap-1 text-sm">
-                  <Flame className={`w-3 h-3 ${runner.streak >= 10 ? "text-accent" : "text-text-muted"}`} />
-                  <span className={runner.streak >= 10 ? "font-bold text-accent" : "text-text-muted"}>
-                    {runner.streak}d
-                  </span>
-                </span>
-              </div>
+              <div className="col-span-1 text-right text-sm text-text-muted">{runner.totalElevation}m</div>
+              <div className="col-span-2 text-right text-sm text-text-muted">{runner.avgPace}</div>
             </div>
           );
         })}
       </div>
 
-      {/* Stats Cards */}
+      {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
         {[
-          { label: "Längster Streak", value: `${Math.max(...mockRunners.map(r => r.streak))} Tage`, icon: Flame, color: "text-accent" },
-          { label: "Schnellste Pace", value: "4:58 /km", icon: TrendingUp, color: "text-primary" },
-          { label: "Meiste Läufe", value: `${Math.max(...mockRunners.map(r => r.totalRuns))}`, icon: Medal, color: "text-purple-600" },
-          { label: "Gesamt km", value: `${mockRunners.reduce((s, r) => s + r.totalKm, 0).toFixed(0)} km`, icon: Trophy, color: "text-yellow-600" },
+          { label: "Mitglieder", value: `${runners.length}`, icon: "👥" },
+          { label: "Gesamt Kilometer", value: `${totalGroupKm} km`, icon: "📏" },
+          { label: "Gesamt Läufe", value: `${totalGroupRuns}`, icon: "🏃" },
+          { label: "Gesamt Höhenmeter", value: `${runners.reduce((s, r) => s + r.totalElevation, 0)} m`, icon: "⛰️" },
         ].map((stat) => (
           <div key={stat.label} className="bg-bg-card rounded-xl border border-border p-4 text-center">
-            <stat.icon className={`w-6 h-6 mx-auto mb-2 ${stat.color}`} />
-            <div className="font-bold text-lg">{stat.value}</div>
+            <span className="text-2xl">{stat.icon}</span>
+            <div className="font-bold text-lg mt-1">{stat.value}</div>
             <div className="text-xs text-text-muted">{stat.label}</div>
           </div>
         ))}
+      </div>
+
+      {/* CTA */}
+      {runners.length < 3 && (
+        <div className="mt-8 bg-stone-50 rounded-2xl p-6 border border-border text-center">
+          <span className="text-3xl mb-2 block">🤝</span>
+          <h3 className="font-bold text-lg mb-1">Lade Freunde ein!</h3>
+          <p className="text-text-muted text-sm">
+            Je mehr mitmachen, desto spannender wird das Leaderboard.
+            Teile den Strava-Club mit deinen Lauffreunden!
+          </p>
+        </div>
+      )}
+
+      <div className="text-center mt-6 text-sm text-text-muted">
+        Daten powered by Strava 🔗
       </div>
     </div>
   );

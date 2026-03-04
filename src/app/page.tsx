@@ -9,7 +9,7 @@ import {
   TrendingUp,
   ChevronRight,
 } from "lucide-react";
-import { mockActivities, mockRunners, mockGroupStats, mockChallenges } from "@/lib/mock-data";
+import { mockActivities, mockGroupStats, mockChallenges } from "@/lib/mock-data";
 import { getClubActivities, getClubMembers, formatDistance, formatDuration, formatPace, type ClubActivity, type ClubMember } from "@/lib/strava";
 
 function activityToDisplay(a: ClubActivity) {
@@ -56,7 +56,19 @@ export default async function Home() {
     : mockGroupStats.totalElevation;
   const memberCount = stravaMembers.length > 0 ? stravaMembers.length : mockGroupStats.members;
 
-  const topRunners = [...mockRunners].sort((a, b) => b.totalKm - a.totalKm).slice(0, 3);
+  // Build top runners from real Strava data
+  const runnerMap: Record<string, { km: number; runs: number }> = {};
+  for (const a of stravaActivities) {
+    const name = `${a.athlete.firstname} ${a.athlete.lastname}`;
+    if (!runnerMap[name]) runnerMap[name] = { km: 0, runs: 0 };
+    runnerMap[name].km += a.distance / 1000;
+    runnerMap[name].runs += 1;
+  }
+  const topRunners = Object.entries(runnerMap)
+    .map(([name, data]) => ({ name, totalKm: parseFloat(data.km.toFixed(1)), totalRuns: data.runs }))
+    .sort((a, b) => b.totalKm - a.totalKm)
+    .slice(0, 3);
+
   const activeChallenge = mockChallenges[0];
 
   return (
@@ -170,9 +182,11 @@ export default async function Home() {
                 </Link>
               </div>
               <div className="bg-bg-card rounded-xl border border-border overflow-hidden">
-                {topRunners.map((runner, i) => (
+                {topRunners.length === 0 ? (
+                  <div className="p-4 text-center text-sm text-text-muted">Noch keine Aktivitäten</div>
+                ) : topRunners.map((runner, i) => (
                   <div
-                    key={runner.id}
+                    key={runner.name}
                     className={`flex items-center gap-3 p-3 ${
                       i < topRunners.length - 1 ? "border-b border-border" : ""
                     }`}
@@ -184,7 +198,7 @@ export default async function Home() {
                     }`}>
                       {i + 1}
                     </span>
-                    <span className="text-lg">{runner.avatar}</span>
+                    <span className="text-lg">🏃</span>
                     <div className="flex-1">
                       <div className="font-medium text-sm">{runner.name}</div>
                       <div className="text-xs text-text-muted">{runner.totalRuns} Läufe</div>

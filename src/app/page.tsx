@@ -10,9 +10,52 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { mockActivities, mockRunners, mockGroupStats, mockChallenges } from "@/lib/mock-data";
+import { getClubActivities, getClubMembers, formatDistance, formatDuration, formatPace, type ClubActivity, type ClubMember } from "@/lib/strava";
 
-export default function Home() {
-  const recentActivities = mockActivities.slice(0, 3);
+function activityToDisplay(a: ClubActivity) {
+  const distKm = (a.distance / 1000).toFixed(1);
+  const pace = a.distance > 0 ? formatPace(a.distance / a.moving_time) : "-";
+  const dur = formatDuration(a.moving_time);
+  return {
+    name: a.name,
+    athleteName: `${a.athlete.firstname} ${a.athlete.lastname}`,
+    distance: distKm,
+    duration: dur,
+    pace,
+    elevation: Math.round(a.total_elevation_gain),
+    type: a.sport_type || a.type,
+  };
+}
+
+export default async function Home() {
+  let stravaActivities: ClubActivity[] = [];
+  let stravaMembers: ClubMember[] = [];
+  try {
+    [stravaActivities, stravaMembers] = await Promise.all([
+      getClubActivities(1, 10),
+      getClubMembers(),
+    ]);
+  } catch (e) {
+    console.error("Strava fetch failed, using mock data", e);
+  }
+
+  const hasStravaData = stravaActivities.length > 0;
+  const recentActivities = hasStravaData
+    ? stravaActivities.slice(0, 3).map(activityToDisplay)
+    : mockActivities.slice(0, 3).map(a => ({
+        name: a.name, athleteName: a.athleteName, distance: String(a.distance),
+        duration: a.duration, pace: a.pace, elevation: a.elevation, type: a.type,
+      }));
+
+  const totalKm = hasStravaData
+    ? parseFloat((stravaActivities.reduce((s, a) => s + a.distance, 0) / 1000).toFixed(1))
+    : mockGroupStats.totalKm;
+  const totalRuns = hasStravaData ? stravaActivities.length : mockGroupStats.totalRuns;
+  const totalElevation = hasStravaData
+    ? Math.round(stravaActivities.reduce((s, a) => s + a.total_elevation_gain, 0))
+    : mockGroupStats.totalElevation;
+  const memberCount = stravaMembers.length > 0 ? stravaMembers.length : mockGroupStats.members;
+
   const topRunners = [...mockRunners].sort((a, b) => b.totalKm - a.totalKm).slice(0, 3);
   const activeChallenge = mockChallenges[0];
 
@@ -51,10 +94,10 @@ export default function Home() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 relative z-10">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: "Läufer", value: String(mockGroupStats.members), icon: Users, color: "text-primary" },
-            { label: "Gesamt km", value: mockGroupStats.totalKm.toLocaleString("de-DE"), icon: TrendingUp, color: "text-accent" },
-            { label: "Läufe", value: String(mockGroupStats.totalRuns), icon: Activity, color: "text-blue-600" },
-            { label: "Höhenmeter", value: mockGroupStats.totalElevation.toLocaleString("de-DE") + " m", icon: BarChart3, color: "text-purple-600" },
+            { label: "Läufer", value: String(memberCount), icon: Users, color: "text-primary" },
+            { label: "Gesamt km", value: totalKm.toLocaleString("de-DE"), icon: TrendingUp, color: "text-accent" },
+            { label: "Läufe", value: String(totalRuns), icon: Activity, color: "text-blue-600" },
+            { label: "Höhenmeter", value: totalElevation.toLocaleString("de-DE") + " m", icon: BarChart3, color: "text-purple-600" },
           ].map((stat) => (
             <div
               key={stat.label}
@@ -85,31 +128,28 @@ export default function Home() {
               </Link>
             </div>
             <div className="space-y-3">
-              {recentActivities.map((activity) => (
+              {recentActivities.map((activity, idx) => (
                 <div
-                  key={activity.id}
+                  key={idx}
                   className="bg-bg-card rounded-xl p-4 border border-border hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="text-2xl">{activity.athleteAvatar}</span>
+                      <span className="text-2xl">🏃</span>
                       <div>
                         <div className="font-semibold">{activity.athleteName}</div>
                         <div className="text-sm text-text-muted">{activity.name}</div>
                       </div>
                     </div>
-                    <span className="text-xs text-text-muted">
-                      {new Date(activity.date).toLocaleDateString("de-DE", {
-                        day: "numeric",
-                        month: "short",
-                      })}
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                      {activity.type === "Run" ? "Lauf" : activity.type}
                     </span>
                   </div>
                   <div className="flex gap-4 mt-3 text-sm">
                     <span className="font-medium">{activity.distance} km</span>
                     <span className="text-text-muted">{activity.duration}</span>
-                    <span className="text-text-muted">{activity.pace} /km</span>
-                    <span className="text-text-muted">{activity.elevation} m</span>
+                    <span className="text-text-muted">{activity.pace}</span>
+                    <span className="text-text-muted">↑ {activity.elevation} m</span>
                   </div>
                 </div>
               ))}

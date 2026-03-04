@@ -97,6 +97,25 @@ export interface StravaActivity {
   achievement_count: number;
 }
 
+// Club Activities API gibt weniger Felder zurück
+export interface ClubActivity {
+  resource_state: number;
+  athlete: {
+    resource_state: number;
+    firstname: string;
+    lastname: string;
+  };
+  name: string;
+  distance: number; // meters
+  moving_time: number; // seconds
+  elapsed_time: number;
+  total_elevation_gain: number;
+  type: string;
+  sport_type: string;
+  workout_type: number | null;
+  device_name?: string;
+}
+
 export interface ClubMember {
   firstname: string;
   lastname: string;
@@ -112,7 +131,7 @@ export interface ClubMember {
 export async function getClubActivities(
   page = 1,
   perPage = 30
-): Promise<StravaActivity[]> {
+): Promise<ClubActivity[]> {
   const token = await getAccessToken();
   const clubId = process.env.STRAVA_CLUB_ID;
 

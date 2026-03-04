@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { Map as MapIcon, Mountain, Ruler, ArrowUpDown } from "lucide-react";
-import { mockRoutes } from "@/lib/mock-data";
+import { routes } from "@/lib/routes";
 import { useState } from "react";
 
 // Leaflet muss client-side geladne werden
@@ -29,7 +29,7 @@ function DifficultyBadge({ difficulty }: { difficulty: string }) {
 }
 
 export default function StreckenPage() {
-  const [selectedRoute, setSelectedRoute] = useState(mockRoutes[0]);
+  const [selectedRoute, setSelectedRoute] = useState(routes[0]);
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -47,7 +47,7 @@ export default function StreckenPage() {
       <div className="grid lg:grid-cols-5 gap-6">
         {/* Sidebar: Route List */}
         <div className="lg:col-span-2 space-y-3">
-          {mockRoutes.map((route) => (
+          {routes.map((route) => (
             <button
               key={route.id}
               onClick={() => setSelectedRoute(route)}

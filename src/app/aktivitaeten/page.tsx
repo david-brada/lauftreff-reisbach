@@ -1,5 +1,4 @@
 import { Activity, Mountain, Clock, Filter } from "lucide-react";
-import { mockActivities } from "@/lib/mock-data";
 import { getClubActivities, formatDistance, formatDuration, formatPace, type ClubActivity } from "@/lib/strava";
 
 export const metadata = {
@@ -63,30 +62,13 @@ function stravaToDisplay(a: ClubActivity): DisplayActivity {
   };
 }
 
-function mockToDisplay(a: typeof mockActivities[0]): DisplayActivity {
-  return {
-    name: a.name,
-    athleteName: a.athleteName,
-    distance: String(a.distance),
-    duration: a.duration,
-    pace: a.pace + " /km",
-    elevation: a.elevation,
-    type: a.type,
-  };
-}
-
 export default async function AktivitaetenPage() {
   let activities: DisplayActivity[] = [];
   try {
     const stravaData = await getClubActivities(1, 30);
-    if (stravaData.length > 0) {
-      activities = stravaData.map(stravaToDisplay);
-    }
+    activities = stravaData.map(stravaToDisplay);
   } catch (e) {
     console.error("Strava fetch failed", e);
-  }
-  if (activities.length === 0) {
-    activities = mockActivities.map(mockToDisplay);
   }
 
   return (
@@ -104,6 +86,13 @@ export default async function AktivitaetenPage() {
 
       {/* Activities Feed */}
       <div className="space-y-4">
+        {activities.length === 0 && (
+          <div className="bg-bg-card rounded-2xl border border-border p-8 text-center">
+            <span className="text-4xl mb-3 block">🏃</span>
+            <h2 className="font-bold text-lg mb-1">Noch keine Aktivitäten</h2>
+            <p className="text-text-muted text-sm">Sobald Mitglieder dem Strava-Club beitreten und laufen, erscheinen hier die Aktivitäten.</p>
+          </div>
+        )}
         {activities.map((activity, idx) => (
           <article
             key={idx}

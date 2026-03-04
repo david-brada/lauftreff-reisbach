@@ -9,7 +9,7 @@ import {
   TrendingUp,
   ChevronRight,
 } from "lucide-react";
-import { mockActivities, mockGroupStats, mockChallenges } from "@/lib/mock-data";
+import { mockChallenges } from "@/lib/mock-data";
 import { getClubActivities, getClubMembers, formatDistance, formatDuration, formatPace, type ClubActivity, type ClubMember } from "@/lib/strava";
 
 function activityToDisplay(a: ClubActivity) {
@@ -39,22 +39,12 @@ export default async function Home() {
     console.error("Strava fetch failed, using mock data", e);
   }
 
-  const hasStravaData = stravaActivities.length > 0;
-  const recentActivities = hasStravaData
-    ? stravaActivities.slice(0, 3).map(activityToDisplay)
-    : mockActivities.slice(0, 3).map(a => ({
-        name: a.name, athleteName: a.athleteName, distance: String(a.distance),
-        duration: a.duration, pace: a.pace, elevation: a.elevation, type: a.type,
-      }));
+  const recentActivities = stravaActivities.slice(0, 3).map(activityToDisplay);
 
-  const totalKm = hasStravaData
-    ? parseFloat((stravaActivities.reduce((s, a) => s + a.distance, 0) / 1000).toFixed(1))
-    : mockGroupStats.totalKm;
-  const totalRuns = hasStravaData ? stravaActivities.length : mockGroupStats.totalRuns;
-  const totalElevation = hasStravaData
-    ? Math.round(stravaActivities.reduce((s, a) => s + a.total_elevation_gain, 0))
-    : mockGroupStats.totalElevation;
-  const memberCount = stravaMembers.length > 0 ? stravaMembers.length : mockGroupStats.members;
+  const totalKm = parseFloat((stravaActivities.reduce((s, a) => s + a.distance, 0) / 1000).toFixed(1));
+  const totalRuns = stravaActivities.length;
+  const totalElevation = Math.round(stravaActivities.reduce((s, a) => s + a.total_elevation_gain, 0));
+  const memberCount = stravaMembers.length;
 
   // Build top runners from real Strava data
   const runnerMap: Record<string, { km: number; runs: number }> = {};
@@ -140,6 +130,11 @@ export default async function Home() {
               </Link>
             </div>
             <div className="space-y-3">
+              {recentActivities.length === 0 && (
+                <div className="bg-bg-card rounded-xl p-6 border border-border text-center text-text-muted">
+                  Noch keine Aktivitäten vorhanden. Sobald jemand läuft, erscheinen hier die Daten.
+                </div>
+              )}
               {recentActivities.map((activity, idx) => (
                 <div
                   key={idx}
